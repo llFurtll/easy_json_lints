@@ -4,7 +4,7 @@
 
 ```yaml
 plugins:
-  dart_easy_json_lints: ^0.1.0
+  dart_easy_json_lints: ^0.2.0
 ```
 
 A model with mistakes the plugin reports (`dart analyze` output shown below it):
@@ -20,7 +20,7 @@ class Conv {
 bool isShort(String v) => v.length < 3;
 
 @EasyJson()
-class LintDemo {
+class LintDemo with LintDemoSerializer {
   @EasyValidate(minLength: 3)
   final int age;
 

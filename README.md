@@ -4,7 +4,7 @@ Analyzer plugin for [`dart_easy_json`](https://pub.dev/packages/dart_easy_json).
 
 ```dart
 @EasyJson()
-class User {
+class User with UserSerializer {
   @EasyValidate(minLength: 3)   // ⚠ 'minLength' doesn't apply to 'int' fields, so it is ignored.
   final int age;
 
@@ -14,13 +14,15 @@ class User {
 }
 ```
 
+Most warnings come with a quick fix (the 💡 in your editor).
+
 ## Setup
 
 Requires Dart 3.10+ (Flutter 3.38+). Add the plugin to the `analysis_options.yaml` at the root of your package:
 
 ```yaml
 plugins:
-  dart_easy_json_lints: ^0.1.0
+  dart_easy_json_lints: ^0.2.0
 ```
 
 Then restart the Dart analysis server (in VS Code: *Dart: Restart Analysis Server*). There is nothing to add to `pubspec.yaml` — the analysis server fetches the plugin itself.
@@ -29,7 +31,15 @@ Then restart the Dart analysis server (in VS Code: *Dart: Restart Analysis Serve
 
 ## Rules
 
-Both rules are warnings, enabled by default.
+All rules are warnings, enabled by default.
+
+| Rule | Catches | Quick fix |
+|---|---|---|
+| [`easy_validate_wrong_type`](#easy_validate_wrong_type) | `@EasyValidate` rules on a field type they don't apply to | Remove the rule |
+| [`easy_convert_wrong_signature`](#easy_convert_wrong_signature) | `@EasyConvert` / `custom:` functions that don't fit the field | — |
+| [`easy_json_missing_mixin`](#easy_json_missing_mixin) | `@EasyJson` class without `with XSerializer` | Add the mixin |
+| [`easy_union_missing_factory`](#easy_union_missing_factory) | `@EasyUnion` subclass without `factory X.fromJson` | Add the factory |
+| [`easy_union_mapping_not_subtype`](#easy_union_mapping_not_subtype) | `@EasyUnion` mapping to a class that isn't a subtype | — |
 
 ### `easy_validate_wrong_type`
 
@@ -49,6 +59,18 @@ A function passed to `@EasyConvert` or `@EasyValidate(custom:)` that doesn't fit
 *   `fromJson` / `valueFromJson`: must take one argument, and return something assignable to the field (or `Map` value) type.
 *   `toJson` / `valueToJson`: must take one argument that accepts the field (or `Map` value) type.
 *   `custom`: must take one argument that accepts the field type, and return `bool`.
+
+### `easy_json_missing_mixin`
+
+An `@EasyJson` class that doesn't mix in its generated `XSerializer`. Without it the class has no `toJson()` method, and the generated `toJson` of any model that contains it (which calls `field.toJson()`) doesn't compile. Not reported when the class defines its own `toJson()`, is abstract, is an `@EasyUnion` base, or uses `@EasyJson(toJson: false)`. Writing `with XSerializer` before running `build_runner` is fine — the check is done on the source.
+
+### `easy_union_missing_factory`
+
+A class listed in an `@EasyUnion` `mapping` (or as its `fallback`) without a `fromJson` constructor. The generated union `fromJson` calls `Subclass.fromJson(json)`, so the generated code doesn't compile. Not reported for `@EasyJson(strict: true)` unions, which don't use these constructors.
+
+### `easy_union_mapping_not_subtype`
+
+A class in an `@EasyUnion` `mapping` (or its `fallback`) that doesn't extend or implement the union class.
 
 ## Suppressing
 

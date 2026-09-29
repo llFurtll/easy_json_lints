@@ -59,11 +59,16 @@ class _Visitor extends SimpleAstVisitor<void> {
     final field = AnnotatedField.of(node, 'EasyValidate');
     if (field == null) return;
 
-    for (final MapEntry(key: param, value: (types, hint)) in _appliesTo.entries) {
-      final set = field.value.getField(param);
-      if (set == null || set.isNull) continue;
+    for (final arg in node.arguments?.arguments ?? const <Argument>[]) {
+      if (arg is! NamedArgument) continue;
+      final param = arg.name.lexeme;
+      final rule = _appliesTo[param];
+      if (rule == null) continue;
+      final (types, hint) = rule;
       if (types.contains(field.baseTypeName)) continue;
-      rule.reportAtNode(node, arguments: [param, field.baseTypeName, hint]);
+      // Reporta no argumento (`minLength: 3`), não na anotação inteira: fica
+      // mais preciso no editor e é o que o quick fix remove.
+      this.rule.reportAtNode(arg, arguments: [param, field.baseTypeName, hint]);
     }
   }
 }
