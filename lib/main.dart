@@ -1,6 +1,7 @@
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
 
+import 'src/assists/convert_to_easy_json_model.dart';
 import 'src/fixes/add_from_json_factory.dart';
 import 'src/fixes/add_serializer_mixin.dart';
 import 'src/fixes/remove_inapplicable_rule.dart';
@@ -26,8 +27,12 @@ class EasyJsonLintsPlugin extends Plugin {
       ..registerWarningRule(EasyUnionMissingFactory())
       ..registerWarningRule(EasyJsonMissingMixin())
       ..registerWarningRule(EasyUnionMappingNotSubtype())
-      ..registerFixForRule(EasyValidateWrongType.code, RemoveInapplicableRule.new)
+      ..registerFixForRule(
+        EasyValidateWrongType.code,
+        RemoveInapplicableRule.new,
+      )
       ..registerFixForRule(EasyUnionMissingFactory.code, AddFromJsonFactory.new)
-      ..registerFixForRule(EasyJsonMissingMixin.code, AddSerializerMixin.new);
+      ..registerFixForRule(EasyJsonMissingMixin.code, AddSerializerMixin.new)
+      ..registerAssist(ConvertToEasyJsonModel.new);
   }
 }

@@ -14,7 +14,7 @@ class User with UserSerializer {
 }
 ```
 
-Most warnings come with a quick fix (the 💡 in your editor).
+Most warnings come with a quick fix (the 💡 in your editor), and an [assist](#assist-convert-to-easyjson-model) turns a plain class into a model.
 
 ## Setup
 
@@ -22,12 +22,40 @@ Requires Dart 3.10+ (Flutter 3.38+). Add the plugin to the `analysis_options.yam
 
 ```yaml
 plugins:
-  dart_easy_json_lints: ^0.2.0
+  dart_easy_json_lints: ^0.3.0
 ```
 
 Then restart the Dart analysis server (in VS Code: *Dart: Restart Analysis Server*). There is nothing to add to `pubspec.yaml` — the analysis server fetches the plugin itself.
 
 > Run `dart analyze` from the package root (or on specific files). When given a sub-directory (`dart analyze lib/models`), `dart analyze` doesn't load the plugins configured at the root.
+
+## Assist: Convert to @EasyJson model
+
+With the cursor on the name of a plain class, the 💡 menu offers **Convert to @EasyJson model**:
+
+```dart
+class User {
+  final String name;
+  final int? age;
+}
+```
+
+becomes
+
+```dart
+import 'package:dart_easy_json/easy_json.dart';
+import 'user.easy.dart';
+
+@EasyJson()
+class User with UserSerializer {
+  final String name;
+  final int? age;
+  User({required this.name, this.age});
+  factory User.fromJson(Map<String, dynamic> json) => userFromJson(json);
+}
+```
+
+Then run `dart run build_runner build`. It only adds what's missing: an existing constructor, `fromJson` factory or import is kept (the constructor is only created when the class has none, with a named parameter per field). The `.easy.dart` import assumes the default location, next to the model. Generic, abstract and sealed classes aren't offered the assist, since they need converters or `@EasyUnion`.
 
 ## Rules
 

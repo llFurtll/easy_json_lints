@@ -43,14 +43,16 @@ class AddSerializerMixin extends ResolvedCorrectionProducer {
     final mixin = '$_mixin$args';
 
     await builder.addDartFileEdit(file, (builder) {
-      final withClause = decl.withClause;
-      if (withClause != null) {
-        builder.addSimpleInsertion(withClause.end, ', $mixin');
-      } else {
-        // `with` vem depois do `extends` e antes do `implements`.
-        final after = decl.extendsClause?.end ?? decl.namePart.end;
-        builder.addSimpleInsertion(after, ' with $mixin');
-      }
+      final (offset, text) = mixinInsertion(decl, mixin);
+      builder.addSimpleInsertion(offset, text);
     });
   }
+}
+
+/// Onde e o que inserir para [decl] ganhar `with [mixin]`: no fim de um
+/// `with` existente, ou depois do `extends` (e antes do `implements`).
+(int, String) mixinInsertion(ClassDeclaration decl, String mixin) {
+  final withClause = decl.withClause;
+  if (withClause != null) return (withClause.end, ', $mixin');
+  return (decl.extendsClause?.end ?? decl.namePart.end, ' with $mixin');
 }

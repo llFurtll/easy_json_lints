@@ -90,12 +90,35 @@ abstract class EasyJsonRuleTest extends AnalysisRuleTest {
         selectionLength: diagnostic.length,
       ),
     );
+    return _apply(producer);
+  }
+
+  /// Aplica o assist [assist] com o cursor no início de [at] (no último
+  /// arquivo analisado) e devolve o código resultante — igual ao código
+  /// original se o assist não se aplica ali.
+  Future<String> applyAssist(FixGenerator assist, String at) async {
+    final offset = result.content.indexOf(at);
+    assert(offset >= 0, 'snippet not found: $at');
+    final library =
+        await result.session.getResolvedLibrary(result.path)
+            as ResolvedLibraryResult;
+    return _apply(
+      assist(
+        context: CorrectionProducerContext.createResolved(
+          libraryResult: library,
+          unitResult: result,
+          selectionOffset: offset,
+        ),
+      ),
+    );
+  }
+
+  Future<String> _apply(ResolvedCorrectionProducer producer) async {
     final builder = ChangeBuilder(session: result.session);
     await producer.compute(builder);
 
-    final edits = [
-      for (final file in builder.sourceChange.edits) ...file.edits,
-    ]..sort((a, b) => b.offset.compareTo(a.offset));
+    final edits = [for (final file in builder.sourceChange.edits) ...file.edits]
+      ..sort((a, b) => b.offset.compareTo(a.offset));
     var out = result.content;
     for (final e in edits) {
       out = out.replaceRange(e.offset, e.offset + e.length, e.replacement);

@@ -4,7 +4,7 @@
 
 ```yaml
 plugins:
-  dart_easy_json_lints: ^0.2.0
+  dart_easy_json_lints: ^0.3.0
 ```
 
 A model with mistakes the plugin reports (`dart analyze` output shown below it):

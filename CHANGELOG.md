@@ -1,3 +1,7 @@
+## 0.3.0
+
+*   **New assist** *Convert to @EasyJson model*, on the name of a plain class: adds the imports (the package and the `.easy.dart` file), `@EasyJson()`, `with XSerializer`, a constructor with named parameters (only when the class has none) and the `fromJson` factory. Generic, abstract and sealed classes aren't offered it.
+
 ## 0.2.0
 
 *   **New rule** `easy_json_missing_mixin`: an `@EasyJson` class without `with XSerializer` (it has no `toJson()`, so models containing it don't compile). Quick fix: add the mixin, with the class's type parameters.
