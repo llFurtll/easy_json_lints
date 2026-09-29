@@ -1,0 +1,296 @@
+// Os métodos precisam do prefixo test_ para o test_reflective_loader.
+// ignore_for_file: non_constant_identifier_names
+
+import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
+import 'package:dart_easy_json_lints/src/rules/easy_convert_wrong_signature.dart';
+import 'package:dart_easy_json_lints/src/rules/easy_validate_wrong_type.dart';
+import 'package:test_reflective_loader/test_reflective_loader.dart';
+
+void main() {
+  defineReflectiveSuite(() {
+    defineReflectiveTests(EasyValidateWrongTypeTest);
+    defineReflectiveTests(EasyConvertWrongSignatureTest);
+  });
+}
+
+/// Cópia mínima das anotações do dart_easy_json, no pacote falso de teste.
+const _easyJson = r'''
+enum EasyFormat { email, url, uuid }
+
+class EasyJson { const EasyJson(); }
+
+class EasyValidate {
+  final int? minLength;
+  final int? maxLength;
+  final String? regex;
+  final num? min;
+  final num? max;
+  final EasyFormat? format;
+  final bool? past;
+  final bool? future;
+  final Function? custom;
+  const EasyValidate({this.minLength, this.maxLength, this.regex, this.min,
+      this.max, this.format, this.past, this.future, this.custom});
+}
+
+class EasyConvert {
+  final Function? fromJson;
+  final Function? toJson;
+  final Function? valueFromJson;
+  final Function? valueToJson;
+  const EasyConvert({this.fromJson, this.toJson, this.valueFromJson,
+      this.valueToJson});
+}
+''';
+
+const _import = "import 'package:dart_easy_json/easy_json.dart';\n";
+
+abstract class _EasyJsonRuleTest extends AnalysisRuleTest {
+  void addEasyJson() =>
+      newPackage('dart_easy_json').addFile('lib/easy_json.dart', _easyJson);
+
+  /// Espera um aviso exatamente sobre [snippet] (a anotação) dentro de [code].
+  // O tipo de retorno (ExpectedDiagnostic) não é exportado publicamente
+  // pelo analyzer_testing, então fica implícito.
+  dynamic lintOn(String code, String snippet, {String? message}) {
+    final offset = code.indexOf(snippet);
+    assert(offset >= 0, 'snippet not found: $snippet');
+    return lint(
+      offset,
+      snippet.length,
+      messageContainsAll: [?message],
+    );
+  }
+}
+
+@reflectiveTest
+class EasyValidateWrongTypeTest extends _EasyJsonRuleTest {
+  @override
+  void setUp() {
+    rule = EasyValidateWrongType();
+    // Precisa vir antes do super.setUp(), que grava o package_config.
+    addEasyJson();
+    super.setUp();
+  }
+
+  Future<void> test_minLength_onInt() async {
+    const code = '''$_import
+class A {
+  @EasyValidate(minLength: 3)
+  final int x;
+  A(this.x);
+}
+''';
+    await assertDiagnostics(code, [
+      lintOn(code, '@EasyValidate(minLength: 3)', message: "'minLength' doesn't apply to 'int'"),
+    ]);
+  }
+
+  Future<void> test_validTypes_noDiagnostics() async {
+    await assertNoDiagnostics('''$_import
+class A {
+  @EasyValidate(minLength: 3, maxLength: 9, regex: 'a', format: EasyFormat.email)
+  final String s;
+  @EasyValidate(minLength: 1)
+  final List<int>? items;
+  @EasyValidate(maxLength: 2)
+  final Map<String, int> m;
+  @EasyValidate(min: 0, max: 10)
+  final double d;
+  @EasyValidate(min: 0)
+  final num n;
+  @EasyValidate(past: true)
+  final DateTime? born;
+  A(this.s, this.items, this.m, this.d, this.n, this.born);
+}
+''');
+  }
+
+  Future<void> test_eachWrongRuleIsReported() async {
+    const code = '''$_import
+class A {
+  @EasyValidate(min: 1, past: true)
+  final String s;
+  A(this.s);
+}
+''';
+    const ann = '@EasyValidate(min: 1, past: true)';
+    await assertDiagnostics(code, [
+      lintOn(code, ann, message: "'min' doesn't apply to 'String'"),
+      lintOn(code, ann, message: "'past' doesn't apply to 'String'"),
+    ]);
+  }
+
+  Future<void> test_formatOnInt() async {
+    const code = '''$_import
+class A {
+  @EasyValidate(format: EasyFormat.uuid)
+  final int id;
+  A(this.id);
+}
+''';
+    await assertDiagnostics(code, [
+      lintOn(code, '@EasyValidate(format: EasyFormat.uuid)'),
+    ]);
+  }
+
+  Future<void> test_onConstructorParameter() async {
+    const code = '''$_import
+class A {
+  final int x;
+  A(@EasyValidate(maxLength: 3) this.x);
+}
+''';
+    await assertDiagnostics(code, [
+      lintOn(code, '@EasyValidate(maxLength: 3)'),
+    ]);
+  }
+
+  Future<void> test_sameNameFromAnotherPackage_ignored() async {
+    await assertNoDiagnostics('''
+class EasyValidate { final int? minLength; const EasyValidate({this.minLength}); }
+class A {
+  @EasyValidate(minLength: 3)
+  final int x;
+  A(this.x);
+}
+''');
+  }
+}
+
+@reflectiveTest
+class EasyConvertWrongSignatureTest extends _EasyJsonRuleTest {
+  @override
+  void setUp() {
+    rule = EasyConvertWrongSignature();
+    // Precisa vir antes do super.setUp(), que grava o package_config.
+    addEasyJson();
+    super.setUp();
+  }
+
+  Future<void> test_validConverters_noDiagnostics() async {
+    await assertNoDiagnostics('''$_import
+class Ms {
+  static DateTime fromJson(Object? v) => throw 'unused';
+  static int toJson(DateTime v) => 0;
+}
+int parseInt(Object? v) => 0;
+bool isPositive(int v) => v > 0;
+class A {
+  @EasyConvert(fromJson: Ms.fromJson, toJson: Ms.toJson)
+  final DateTime at;
+  @EasyConvert(fromJson: Ms.fromJson, toJson: Ms.toJson)
+  final DateTime? maybe;
+  @EasyConvert(valueFromJson: parseInt)
+  final Map<String, int> scores;
+  @EasyValidate(custom: isPositive)
+  final int age;
+  A(this.at, this.maybe, this.scores, this.age);
+}
+''');
+  }
+
+  Future<void> test_fromJson_wrongReturnType() async {
+    const code = '''$_import
+String asText(Object? v) => '';
+class A {
+  @EasyConvert(fromJson: asText)
+  final DateTime at;
+  A(this.at);
+}
+''';
+    await assertDiagnostics(code, [
+      lintOn(code, '@EasyConvert(fromJson: asText)',
+          message: "it returns 'String', but the value is 'DateTime'"),
+    ]);
+  }
+
+  Future<void> test_fromJson_nullableResult_onNonNullableField() async {
+    const code = '''$_import
+DateTime? maybeDate(Object? v) => null;
+class A {
+  @EasyConvert(fromJson: maybeDate)
+  final DateTime at;
+  A(this.at);
+}
+''';
+    await assertDiagnostics(code, [
+      lintOn(code, '@EasyConvert(fromJson: maybeDate)'),
+    ]);
+  }
+
+  Future<void> test_toJson_wrongParameterType() async {
+    const code = '''$_import
+class Ms {
+  static int toJson(int v) => v;
+}
+class A {
+  @EasyConvert(toJson: Ms.toJson)
+  final DateTime at;
+  A(this.at);
+}
+''';
+    await assertDiagnostics(code, [
+      lintOn(code, '@EasyConvert(toJson: Ms.toJson)',
+          message: "'Ms.toJson' doesn't fit field 'at': it takes 'int'"),
+    ]);
+  }
+
+  Future<void> test_wrongArity() async {
+    const code = '''$_import
+DateTime two(Object? a, Object? b) => throw 'unused';
+class A {
+  @EasyConvert(fromJson: two)
+  final DateTime at;
+  A(this.at);
+}
+''';
+    await assertDiagnostics(code, [
+      lintOn(code, '@EasyConvert(fromJson: two)',
+          message: 'must take exactly one argument'),
+    ]);
+  }
+
+  Future<void> test_valueFromJson_wrongReturnType() async {
+    const code = '''$_import
+String asText(Object? v) => '';
+class A {
+  @EasyConvert(valueFromJson: asText)
+  final Map<String, int> scores;
+  A(this.scores);
+}
+''';
+    await assertDiagnostics(code, [
+      lintOn(code, '@EasyConvert(valueFromJson: asText)'),
+    ]);
+  }
+
+  Future<void> test_custom_mustReturnBool() async {
+    const code = '''$_import
+int check(int v) => v;
+class A {
+  @EasyValidate(custom: check)
+  final int age;
+  A(this.age);
+}
+''';
+    await assertDiagnostics(code, [
+      lintOn(code, '@EasyValidate(custom: check)',
+          message: "returns 'int' instead of 'bool'"),
+    ]);
+  }
+
+  Future<void> test_custom_wrongParameterType() async {
+    const code = '''$_import
+bool isShort(String v) => v.length < 3;
+class A {
+  @EasyValidate(custom: isShort)
+  final int age;
+  A(this.age);
+}
+''';
+    await assertDiagnostics(code, [
+      lintOn(code, '@EasyValidate(custom: isShort)'),
+    ]);
+  }
+}

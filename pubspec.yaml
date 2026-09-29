@@ -1,0 +1,25 @@
+name: dart_easy_json_lints
+description: 'Analyzer plugin for dart_easy_json: flags misused annotations in the editor, before build_runner runs.'
+version: 0.1.0
+homepage: https://github.com/llFurtll/easy_json_lints
+repository: https://github.com/llFurtll/easy_json_lints
+issue_tracker: https://github.com/llFurtll/easy_json_lints/issues
+
+topics:
+  - json
+  - lints
+  - analyzer
+  - codegen
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  analysis_server_plugin: ^0.3.23
+  analyzer: ^14.4.0
+
+dev_dependencies:
+  analyzer_testing: any
+  lints: ^6.0.0
+  test: ^1.31.1
+  test_reflective_loader: any
